@@ -3,8 +3,8 @@ services:
     name: consent-paypal-mandate
     env: node
     plan: free
-    buildCommand: "npm run build"
-    startCommand: "npm run seed && npm run start"
+    buildCommand: "npm run build && npm run seed"
+    startCommand: "npm run start"
     envVars:
       - key: NODE_ENV
         value: production
