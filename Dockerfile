@@ -40,4 +40,4 @@ COPY --from=web-builder /app/web/dist /app/web/dist
 EXPOSE 4000
 
 # Seed initial hackathon state and launch
-CMD ["sh", "-c", "npx tsx src/db/seed.ts && node dist/index.js"]
+CMD ["sh", "-c", "node dist/db/seed.js && node dist/index.js"]

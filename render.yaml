@@ -3,11 +3,13 @@ services:
     name: consent-paypal-mandate
     env: node
     plan: free
-    buildCommand: "npm run build && npm run seed"
+    buildCommand: "npm install --include=dev --prefix server && npm install --include=dev --prefix web && npm run build && node server/dist/db/seed.js"
     startCommand: "npm run start"
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: PORT
         value: 10000
       - key: LLM_PROVIDER
