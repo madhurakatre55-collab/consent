@@ -1,0 +1,26 @@
+{
+  "name": "consent-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Consent: A PayPal-native shared spending mandate for AI agents",
+  "scripts": {
+    "dev": "npm run dev --prefix server & npm run dev --prefix web",
+    "dev:server": "npm run dev --prefix server",
+    "dev:web": "npm run dev --prefix web",
+    "build": "npm run build --prefix web && npm run build --prefix server",
+    "start": "npm run start --prefix server",
+    "test": "npm run test --prefix server",
+    "test:e2e": "npm run test:e2e --prefix server",
+    "test:all": "npm run test:all --prefix server",
+    "seed": "npm run seed --prefix server"
+  },
+  "keywords": [
+    "paypal",
+    "hackathon",
+    "ai-agents",
+    "spending-circles",
+    "consent"
+  ],
+  "author": "",
+  "license": "MIT"
+}

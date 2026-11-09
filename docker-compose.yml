@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  consent-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: consent-sandbox
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-gemini-1.5-flash}
+      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID:-}
+      - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET:-}
+      - PAYPAL_ENV=sandbox
+      - DEMO_MODE=true
+    restart: unless-stopped

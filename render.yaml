@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: consent-paypal-mandate
+    env: node
+    plan: free
+    buildCommand: "npm run build"
+    startCommand: "npm run seed && npm run start"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: LLM_PROVIDER
+        value: mock
+      - key: DEMO_MODE
+        value: true
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
