@@ -1,11 +1,21 @@
 import { createApp } from './app.js';
-import { initDb } from './db/schema.js';
+import { getDb, initDb } from './db/schema.js';
+import { runSeed } from './db/seed.js';
 import { config } from './config/env.js';
 import { startReleaseJob } from './jobs/releaseJob.js';
 
 async function main() {
   console.log('Initializing Consent Database...');
   await initDb();
+
+  // Auto-seed on fresh/ephemeral deployments (e.g. Render free tier) if database is empty
+  const db = getDb();
+  const circleCountRes = await db.execute('SELECT COUNT(*) as cnt FROM circles');
+  const count = Number(circleCountRes.rows?.[0]?.cnt || 0);
+  if (count === 0) {
+    console.log('Empty database detected — auto-seeding hackathon demo scenarios...');
+    await runSeed();
+  }
 
   const app = createApp();
 
