@@ -68,7 +68,7 @@ export async function runAgentProposal(params: RunAgentParams): Promise<any> {
     proposalData = {
       merchant: 'FreshMart Organics',
       item: 'Weekly Organic Grocery Basket (Milk, Eggs, Vegetables)',
-      amount: Math.min(1250, mandate.per_purchase_auto_approve_limit * 0.8),
+      amount: Math.min(950, mandate.per_purchase_auto_approve_limit * 0.65),
       category: 'Groceries',
       currency: mandate.monthly_budget.currency || 'INR',
       releaseCondition: { type: 'manual_approval' },
