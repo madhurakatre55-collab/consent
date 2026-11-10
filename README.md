@@ -52,7 +52,8 @@ Every decision produces an exportable, tamper-evident **Consent Receipt** chaine
 | **Approval Flow** | Single human click | **$k$-of-$n$ Quorum Consensus** + Guardian veto on sensitive categories |
 | **Payment Execution** | Immediate, irreversible capture | **PayPal Sandbox Conditional Hold (`intent=AUTHORIZE`)** until release conditions trigger |
 | **Agent Autonomy** | Passive bot proposes, user accepts | **Autonomous Negotiation Room**: Agent bargains counteroffers bounded by mandate ceiling |
-| **Auditability** | Ephemeral chat logs | **Tamper-Evident Ledger**: Cryptographic SHA-256 chained receipts with live tamper detector |
+| **Auditability** | Ephemeral chat logs | **Tamper-Evident Ledger + Blockchain**: SHA-256 hash chain anchored via **Merkle Proofs to Base Sepolia EVM** |
+| **Smart Contract** | Off-chain trust only | **`ConsentMandateRegistry.sol`**: Verifies mandate commitments & receipt inclusion proofs on-chain |
 | **Live Simulation** | Static paper prototype | **Interactive Live Feeds**: One-click price drops, inventory restocks, and time-travel controls |
 | **User Experience** | Cluttered developer dashboards | **Bespoke Dark Obsidian & Champagne Gold** luxury fintech interface |
 
@@ -292,8 +293,13 @@ Duration    1.42s
 
 ```
 consent/
+├── contracts/                   # EVM Solidity Smart Contracts
+│   └── ConsentMandateRegistry.sol # On-chain Merkle root & mandate commitment registry
+│
 ├── server/                      # Node.js + Express + TypeScript Backend
 │   ├── src/
+│   │   ├── blockchain/          # Base Sepolia EVM Merkle Tree & On-Chain Anchoring
+│   │   │   └── anchorService.ts # Merkle root computation, RPC block sync & proofs
 │   │   ├── policy/              # Deterministic Policy Engine & Zod Schemas
 │   │   │   ├── engine.ts        # Pure evaluation function (thresholds, quorum, vetoes)
 │   │   │   └── schema.ts        # Mandate, Proposal, & Receipt Zod schemas

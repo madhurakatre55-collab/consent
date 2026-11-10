@@ -10,6 +10,9 @@ import {
   Layers,
   KeyRound,
   Check,
+  Blocks,
+  Link2,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface ReceiptDetailProps {
@@ -21,21 +24,35 @@ export const ReceiptDetail: React.FC<ReceiptDetailProps> = ({ proposalId, onBack
   const [data, setData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [isAnchoring, setIsAnchoring] = useState(false);
+
+  const loadReceipt = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.getReceipt(proposalId);
+      setData(res);
+    } catch (err: any) {
+      alert(`Error fetching receipt: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchReceipt = async () => {
-      try {
-        setIsLoading(true);
-        const res = await api.getReceipt(proposalId);
-        setData(res);
-      } catch (err: any) {
-        alert(`Error fetching receipt: ${err.message}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchReceipt();
+    loadReceipt();
   }, [proposalId]);
+
+  const handleAnchorNow = async () => {
+    setIsAnchoring(true);
+    try {
+      await api.anchorToBlockchain(data?.receipt?.circle_id);
+      await loadReceipt();
+    } catch (err: any) {
+      alert(`Anchor error: ${err.message}`);
+    } finally {
+      setIsAnchoring(false);
+    }
+  };
 
   if (isLoading) {
     return <LoadingState message="Verifying cryptographic receipt hash chain..." />;
@@ -55,7 +72,7 @@ export const ReceiptDetail: React.FC<ReceiptDetailProps> = ({ proposalId, onBack
     );
   }
 
-  const { receipt, verification } = data;
+  const { receipt, verification, blockchainProof } = data;
 
   const handleDownload = () => {
     const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: 'application/json' });
@@ -264,6 +281,75 @@ export const ReceiptDetail: React.FC<ReceiptDetailProps> = ({ proposalId, onBack
               </code>
             </div>
           </div>
+        </div>
+
+        {/* On-Chain Blockchain Merkle Proof */}
+        <div className="glass-card border border-emerald-500/25 shadow-card-dark rounded-2xl p-5 text-xs space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 font-bold text-white font-display">
+              <Blocks className="w-4 h-4 text-emerald-400" />
+              <span>On-Chain Blockchain Anchor (Base Sepolia EVM)</span>
+            </div>
+            {blockchainProof?.isAnchored ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                <CheckCircle2 className="w-3 h-3" /> MERKLE PROOF VERIFIED
+              </span>
+            ) : (
+              <button
+                onClick={handleAnchorNow}
+                disabled={isAnchoring}
+                className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 gold-btn rounded-lg transition"
+              >
+                <Link2 className="w-3 h-3" />
+                <span>{isAnchoring ? 'Anchoring...' : 'Anchor On-Chain Now'}</span>
+              </button>
+            )}
+          </div>
+
+          {blockchainProof?.isAnchored ? (
+            <div className="space-y-2 font-mono text-[10px]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="p-2.5 bg-white/[0.02] rounded-xl border border-white/[0.06]">
+                  <span className="font-sans text-slate-400 block">Network & Block:</span>
+                  <strong className="text-emerald-300">
+                    {blockchainProof.network} • Block #{blockchainProof.blockNumber}
+                  </strong>
+                </div>
+                <div className="p-2.5 bg-white/[0.02] rounded-xl border border-white/[0.06]">
+                  <span className="font-sans text-slate-400 block">Registry Contract:</span>
+                  <strong className="text-gold-300 break-all">
+                    {blockchainProof.contractAddress}
+                  </strong>
+                </div>
+              </div>
+              <div>
+                <span className="font-sans font-semibold text-slate-400 block">On-Chain Transaction Hash:</span>
+                <code className="text-emerald-300 break-all select-all">{blockchainProof.txHash}</code>
+              </div>
+              <div>
+                <span className="font-sans font-semibold text-slate-400 block">Anchored Merkle Root ({blockchainProof.batchSize} receipts):</span>
+                <code className="text-gold-300 break-all select-all">{blockchainProof.merkleRoot}</code>
+              </div>
+              {blockchainProof.merkleProof && blockchainProof.merkleProof.length > 0 && (
+                <div>
+                  <span className="font-sans font-semibold text-slate-400 block">
+                    Merkle Inclusion Siblings ({blockchainProof.merkleProof.length}):
+                  </span>
+                  <div className="mt-1 space-y-1">
+                    {blockchainProof.merkleProof.map((sibling: string, idx: number) => (
+                      <code key={idx} className="block text-slate-400 break-all">
+                        [{idx}] {sibling}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">
+              This receipt is secured locally by the SHA-256 chain and is ready to be anchored into an immutable Base Sepolia Merkle batch via <code className="text-gold-300 font-mono">ConsentMandateRegistry.sol</code>.
+            </p>
+          )}
         </div>
       </div>
     </div>

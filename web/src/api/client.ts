@@ -322,4 +322,32 @@ export const api = {
     });
     return res.json();
   },
+
+  // Blockchain Anchoring & Merkle Verification
+  getBlockchainStatus: async (circleId?: string): Promise<any> => {
+    const params = new URLSearchParams();
+    if (circleId) params.append('circle_id', circleId);
+    const res = await fetch(`${API_BASE}/blockchain/status?${params.toString()}`);
+    return res.json();
+  },
+  anchorToBlockchain: async (circleId?: string): Promise<any> => {
+    const res = await fetch(`${API_BASE}/blockchain/anchor`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ circleId }),
+    });
+    return res.json();
+  },
+  getBlockchainProof: async (proposalId: string): Promise<any> => {
+    const res = await fetch(`${API_BASE}/blockchain/proof/${proposalId}`);
+    return res.json();
+  },
+  verifyMerkleProof: async (leaf: string, proof: string[], root: string): Promise<any> => {
+    const res = await fetch(`${API_BASE}/blockchain/verify-proof`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leaf, proof, root }),
+    });
+    return res.json();
+  },
 };

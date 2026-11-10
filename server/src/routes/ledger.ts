@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getDb } from '../db/schema.js';
 import { generateReceiptHash, verifyReceiptHash, ReceiptData } from '../policy/receipt.js';
 import { mockLedgerAnswer } from '../llm/mock.js';
+import { getProposalBlockchainProof } from '../blockchain/anchorService.js';
 
 const router = Router();
 
@@ -124,6 +125,8 @@ router.get('/receipt/:proposalId', async (req: Request, res: Response) => {
       receiptDataWithoutHash
     );
 
+    const blockchainProof = await getProposalBlockchainProof(proposalId);
+
     res.json({
       receipt: {
         ...receiptDataWithoutHash,
@@ -135,6 +138,7 @@ router.get('/receipt/:proposalId', async (req: Request, res: Response) => {
         hashAlgorithm: 'SHA-256',
         chainIntegrity: 'VERIFIED',
       },
+      blockchainProof,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

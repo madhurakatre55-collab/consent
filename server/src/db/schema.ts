@@ -113,7 +113,25 @@ export async function initDb(): Promise<void> {
       explanation TEXT,
       receipt_hash TEXT NOT NULL,
       previous_receipt_hash TEXT NOT NULL,
+      blockchain_tx_hash TEXT,
+      blockchain_block_number INTEGER,
+      merkle_root TEXT,
       FOREIGN KEY (circle_id) REFERENCES circles(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS blockchain_anchors (
+      id TEXT PRIMARY KEY,
+      circle_id TEXT NOT NULL,
+      merkle_root TEXT NOT NULL,
+      tx_hash TEXT NOT NULL,
+      block_number INTEGER NOT NULL,
+      network TEXT NOT NULL,
+      chain_id INTEGER NOT NULL,
+      contract_address TEXT NOT NULL,
+      receipt_count INTEGER NOT NULL,
+      gas_used INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      anchored_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS negotiations (
@@ -141,4 +159,19 @@ export async function initDb(): Promise<void> {
       FOREIGN KEY (circle_id) REFERENCES circles(id)
     );
   `);
+
+  // Safe migrations for existing databases
+  const alterStatements = [
+    'ALTER TABLE ledger_entries ADD COLUMN blockchain_tx_hash TEXT',
+    'ALTER TABLE ledger_entries ADD COLUMN blockchain_block_number INTEGER',
+    'ALTER TABLE ledger_entries ADD COLUMN merkle_root TEXT',
+  ];
+
+  for (const stmt of alterStatements) {
+    try {
+      await db.execute(stmt);
+    } catch {
+      // Column already exists
+    }
+  }
 }

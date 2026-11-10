@@ -11,6 +11,7 @@ import paymentsRouter from './routes/payments.js';
 import ledgerRouter from './routes/ledger.js';
 import demoRouter from './routes/demo.js';
 import agentsRouter from './routes/agents.js';
+import blockchainRouter from './routes/blockchain.js';
 
 export function createApp() {
   const app = express();
@@ -37,6 +38,7 @@ export function createApp() {
   app.use('/api/ledger', ledgerRouter);
   app.use('/api/demo', demoRouter);
   app.use('/api/agents', agentsRouter);
+  app.use('/api/blockchain', blockchainRouter);
 
   // Helper endpoint for active users list (allows switching personas in the demo UI)
   app.get('/api/users', async (req, res, next) => {

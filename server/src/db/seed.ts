@@ -1,5 +1,7 @@
 import { getDb, initDb } from './schema.js';
 import { generateReceiptHash } from '../policy/receipt.js';
+import { buildMerkleTree, BLOCKCHAIN_CONFIG, toBytes32 } from '../blockchain/anchorService.js';
+import crypto from 'crypto';
 
 export async function runSeed(): Promise<void> {
   await initDb();
@@ -7,6 +9,7 @@ export async function runSeed(): Promise<void> {
 
   // Clear existing records
   await db.executeMultiple(`
+    DELETE FROM blockchain_anchors;
     DELETE FROM agents;
     DELETE FROM negotiations;
     DELETE FROM ledger_entries;
@@ -396,10 +399,56 @@ export async function runSeed(): Promise<void> {
     timestampMinutesAgo: 180,
   });
 
+  // Anchor the initial historical receipts on-chain in a Genesis Merkle Batch
+  const historicalIds = ['ledg-prop-demo-blocked', 'ledg-prop-demo-captured', 'ledg-prop-demo-voided'];
+  const histRes = await db.execute(
+    `SELECT * FROM ledger_entries WHERE id IN ('ledg-prop-demo-blocked', 'ledg-prop-demo-captured', 'ledg-prop-demo-voided') ORDER BY timestamp ASC`
+  );
+  if (histRes.rows.length > 0) {
+    const leaves = histRes.rows.map((r) => toBytes32(r.receipt_hash as string));
+    const { root: merkleRoot } = buildMerkleTree(leaves);
+    const genesisBlock = 19482104;
+    const genesisTime = new Date(Date.now() - 50 * 60000).toISOString();
+    const txHash =
+      '0x' +
+      crypto
+        .createHash('sha256')
+        .update(`${merkleRoot}:${BLOCKCHAIN_CONFIG.contractAddress}:${genesisBlock}:GENESIS`)
+        .digest('hex');
+
+    await db.execute({
+      sql: `INSERT INTO blockchain_anchors (
+        id, circle_id, merkle_root, tx_hash, block_number, network, chain_id,
+        contract_address, receipt_count, gas_used, status, anchored_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        'anc-genesis-flat12',
+        circleId,
+        merkleRoot,
+        txHash,
+        genesisBlock,
+        BLOCKCHAIN_CONFIG.network,
+        BLOCKCHAIN_CONFIG.chainId,
+        BLOCKCHAIN_CONFIG.contractAddress,
+        histRes.rows.length,
+        50550,
+        'CONFIRMED',
+        genesisTime,
+      ],
+    });
+
+    for (const row of histRes.rows) {
+      await db.execute({
+        sql: `UPDATE ledger_entries SET blockchain_tx_hash = ?, blockchain_block_number = ?, merkle_root = ? WHERE id = ?`,
+        args: [txHash, genesisBlock, merkleRoot, row.id],
+      });
+    }
+  }
+
   console.log('Seed completed successfully!');
 }
 
-if (process.argv[1] && process.argv[1].endsWith('seed.ts')) {
+if (process.argv[1] && (process.argv[1].endsWith('seed.ts') || process.argv[1].endsWith('seed.js'))) {
   runSeed()
     .then(() => process.exit(0))
     .catch((err) => {

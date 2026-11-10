@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Circle, api } from '../api/client.js';
 import {
   Sparkles,
@@ -11,6 +11,9 @@ import {
   Filter,
   CheckCircle2,
   AlertTriangle,
+  Link2,
+  Blocks,
+  ArrowUpRight,
 } from 'lucide-react';
 
 interface LedgerPageProps {
@@ -39,6 +42,43 @@ export const Ledger: React.FC<LedgerPageProps> = ({
   const [chainAudit, setChainAudit] = useState<any | null>(null);
   const [isSimulatingTamper, setIsSimulatingTamper] = useState(false);
   const [tamperResult, setTamperResult] = useState<any | null>(null);
+
+  // Blockchain Anchoring State
+  const [blockchainStatus, setBlockchainStatus] = useState<any | null>(null);
+  const [isAnchoring, setIsAnchoring] = useState(false);
+  const [anchorSuccess, setAnchorSuccess] = useState<any | null>(null);
+
+  const loadBlockchainStatus = async () => {
+    try {
+      const status = await api.getBlockchainStatus(selectedCircleId || undefined);
+      setBlockchainStatus(status);
+    } catch {
+      // ignore initial load error
+    }
+  };
+
+  useEffect(() => {
+    loadBlockchainStatus();
+  }, [selectedCircleId, ledgerEntries.length]);
+
+  const handleAnchorBlockchain = async () => {
+    setIsAnchoring(true);
+    setAnchorSuccess(null);
+    try {
+      const res = await api.anchorToBlockchain(selectedCircleId || undefined);
+      if (res.anchored) {
+        setAnchorSuccess(res.anchor);
+        await loadBlockchainStatus();
+        onRefresh();
+      } else {
+        alert(res.message || 'All receipts are already anchored on-chain.');
+      }
+    } catch (err: any) {
+      alert(`Blockchain Anchor Error: ${err.message}`);
+    } finally {
+      setIsAnchoring(false);
+    }
+  };
 
   const filteredEntries = ledgerEntries.filter((entry) => {
     if (selectedCircleId && entry.circle_id !== selectedCircleId) return false;
@@ -163,6 +203,107 @@ export const Ledger: React.FC<LedgerPageProps> = ({
             <span>Simulate Tamper Attack</span>
           </button>
         </div>
+      </div>
+
+      {/* On-Chain Blockchain Anchoring Card (Base Sepolia Merkle Registry) */}
+      <div className="glass-card rounded-3xl p-6 border border-gold-500/35 shadow-card-dark space-y-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-72 h-72 bg-gold-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Blocks className="w-5 h-5 text-gold-400" />
+              <h2 className="text-base sm:text-lg font-black text-white font-display">
+                On-Chain Blockchain Registry
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {blockchainStatus?.network || 'Base Sepolia Testnet'} (Chain {blockchainStatus?.chainId || 84532})
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Receipt hashes are aggregated into a SHA-256 Merkle Tree and anchored to <code className="text-gold-300 font-mono">ConsentMandateRegistry.sol</code> for public immutable auditability.
+            </p>
+          </div>
+
+          <button
+            onClick={handleAnchorBlockchain}
+            disabled={isAnchoring || (blockchainStatus && blockchainStatus.pendingReceipts === 0)}
+            className={`px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center gap-2 shrink-0 ${
+              blockchainStatus && blockchainStatus.pendingReceipts === 0
+                ? 'bg-white/[0.05] text-slate-400 border border-white/[0.08] cursor-not-allowed'
+                : 'gold-btn'
+            }`}
+          >
+            <Link2 className="w-4 h-4" />
+            <span>
+              {isAnchoring
+                ? 'Minting Merkle Batch...'
+                : blockchainStatus?.pendingReceipts > 0
+                ? `Anchor ${blockchainStatus.pendingReceipts} Pending On-Chain`
+                : 'All Receipts Anchored On-Chain'}
+            </span>
+          </button>
+        </div>
+
+        {/* Network Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="p-3.5 bg-white/[0.03] rounded-2xl border border-white/[0.08]">
+            <span className="text-slate-400 block text-[11px]">Smart Contract</span>
+            <code className="text-gold-300 font-mono font-bold text-xs mt-0.5 block">
+              {(blockchainStatus?.contractAddress || '0x7A4cE9281b4C3F19d802A4b8C35107dA1E91E204').slice(0, 10)}...
+              {(blockchainStatus?.contractAddress || '0x7A4cE9281b4C3F19d802A4b8C35107dA1E91E204').slice(-6)}
+            </code>
+          </div>
+
+          <div className="p-3.5 bg-white/[0.03] rounded-2xl border border-white/[0.08]">
+            <span className="text-slate-400 block text-[11px]">Latest Block Height</span>
+            <strong className="text-white font-mono text-sm mt-0.5 block">
+              #{Number(blockchainStatus?.currentBlockNumber || 19482104).toLocaleString()}
+            </strong>
+          </div>
+
+          <div className="p-3.5 bg-white/[0.03] rounded-2xl border border-white/[0.08]">
+            <span className="text-slate-400 block text-[11px]">Anchored Receipts</span>
+            <strong className="text-emerald-300 font-mono text-sm mt-0.5 block">
+              {blockchainStatus?.anchoredReceipts ?? 0} / {blockchainStatus?.totalReceipts ?? ledgerEntries.length}
+            </strong>
+          </div>
+
+          <div className="p-3.5 bg-white/[0.03] rounded-2xl border border-white/[0.08]">
+            <span className="text-slate-400 block text-[11px]">Latest Merkle Root</span>
+            <code className="text-gold-200 font-mono text-xs mt-0.5 block truncate">
+              {blockchainStatus?.latestAnchor?.merkle_root
+                ? `${blockchainStatus.latestAnchor.merkle_root.slice(0, 14)}...`
+                : 'Awaiting Batch'}
+            </code>
+          </div>
+        </div>
+
+        {/* New Anchor Confirmation Banner */}
+        {anchorSuccess && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-xs space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-black text-emerald-300 flex items-center gap-1.5 font-display">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                Merkle Batch Anchored On-Chain ({anchorSuccess.receiptCount} Receipts)
+              </span>
+              <span className="font-mono text-[11px] text-emerald-200 bg-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                Block #{anchorSuccess.blockNumber} • {anchorSuccess.gasUsed.toLocaleString()} gas
+              </span>
+            </div>
+            <div className="font-mono text-[11px] text-slate-300 space-y-1 break-all">
+              <div>
+                <span className="text-slate-400">Tx Hash: </span>
+                <span className="text-gold-300 font-bold">{anchorSuccess.txHash}</span>
+              </div>
+              <div>
+                <span className="text-slate-400">Merkle Root: </span>
+                <span className="text-white">{anchorSuccess.merkleRoot}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Chain Audit Results Banner */}
@@ -293,6 +434,7 @@ export const Ledger: React.FC<LedgerPageProps> = ({
                 <th className="py-3.5 px-5">Actor</th>
                 <th className="py-3.5 px-5">Detail</th>
                 <th className="py-3.5 px-5">Receipt Hash Chain (SHA-256)</th>
+                <th className="py-3.5 px-5">On-Chain Anchor</th>
                 <th className="py-3.5 px-5 text-right">Action</th>
               </tr>
             </thead>
@@ -328,6 +470,23 @@ export const Ledger: React.FC<LedgerPageProps> = ({
                     <div className="text-[10px] text-slate-500">
                       Prev: {entry.previous_receipt_hash?.substring(0, 10)}...
                     </div>
+                  </td>
+                  <td className="py-4 px-5 font-mono text-[11px] whitespace-nowrap">
+                    {entry.blockchain_tx_hash ? (
+                      <div className="space-y-0.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          <Link2 className="w-3 h-3" /> Block #{entry.blockchain_block_number}
+                        </span>
+                        <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                          {entry.blockchain_tx_hash.substring(0, 10)}...
+                          <ArrowUpRight className="w-2.5 h-2.5 text-gold-400" />
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                        Pending Anchor
+                      </span>
+                    )}
                   </td>
                   <td className="py-4 px-5 text-right whitespace-nowrap">
                     {entry.proposal_id && (
